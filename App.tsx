@@ -43,7 +43,6 @@ function App() {
         }
 
         console.log('2. Initializing SDK...');
-        // Check if already initialized to avoid errors
         const isInit = await MapplsIntouch.isInitialized();
         if (!isInit) {
           await MapplsIntouch.initialize(DEVICE_NAME, CLIENT_ID, CLIENT_SECRET);
