@@ -51,7 +51,7 @@ function App() {
         console.log('3. Starting Tracking...', isInit);
         await MapplsIntouch.startTracking();
 
-        Alert.alert('Success!', 'Tracking started. Check Mappls Dashboard.');
+        Alert.alert('Success!', 'Tracking started');
 
         const response = await fetch(
           'https://apis.mapmyindia.com/intouch/v1/3009d05ed5ce8d513a969e2c1f9d34d3/getLiveData',
