@@ -21,9 +21,12 @@ import {
 } from 'react-native-safe-area-context';
 import MapplsIntouch from 'mappls-intouch-react-native';
 import { useEffect } from 'react';
+import { NativeEventEmitter, NativeModules } from 'react-native';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
+  const { MapplsIntouch: MapplsIntouchModule } = NativeModules;
+  const intouchEmitter = new NativeEventEmitter(MapplsIntouchModule);
 
   const CLIENT_ID =
     '96dHZVzsAusIl_xeiUYXCKWmghhNCWwXdxd4rTYuy0PY2aGMNWR9wf8OppzOR184w0XpfFlrWWVIIPpwRhJUeg==';
@@ -34,12 +37,21 @@ function App() {
   useEffect(() => {
     const runTest = async () => {
       try {
-        console.log('1. Asking Permissions...');
+        console.log('1. Asking Permissions (Sequential)...');
+
         if (Platform.OS === 'android') {
-          await PermissionsAndroid.requestMultiple([
+          const fgGranted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-            PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
-          ]);
+          );
+
+          if (
+            fgGranted === PermissionsAndroid.RESULTS.GRANTED &&
+            Platform.Version >= 29
+          ) {
+            await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+            );
+          }
         }
 
         console.log('2. Initializing SDK...');
@@ -48,16 +60,18 @@ function App() {
           await MapplsIntouch.initialize(DEVICE_NAME, CLIENT_ID, CLIENT_SECRET);
         }
 
-        console.log('3. Starting Tracking...', isInit);
+        console.log('3. Starting Tracking...');
         await MapplsIntouch.startTracking();
+
+        console.log('Fetching single location…');
+        const loc = await MapplsIntouch.getCurrentLocationUpdate();
+        console.log('Location new:', loc);
 
         Alert.alert('Success!', 'Tracking started');
 
-        const response = await fetch(
-          'https://apis.mapmyindia.com/intouch/v1/3009d05ed5ce8d513a969e2c1f9d34d3/getLiveData',
-        );
-
-        console.log('response', response);
+        intouchEmitter.addListener('locationUpdated', data => {
+          console.log('Live Update:', data);
+        });
       } catch (error: any) {
         console.error(error);
         Alert.alert('Error', error.message);
@@ -65,8 +79,11 @@ function App() {
     };
 
     runTest();
-  }, []);
 
+    return () => {
+      intouchEmitter.removeAllListeners('locationUpdated');
+    };
+  }, []);
   return (
     <SafeAreaProvider>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
